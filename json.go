@@ -6,6 +6,10 @@ import (
 	"net/http"
 )
 
+type errResponse struct {
+	Error string `json:"error"`
+}
+
 func responseWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 	data, err := json.Marshal(payload)
 	if err != nil {
@@ -16,4 +20,13 @@ func responseWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 	w.Header().Add("Content-Type", "application/json")
 	w.WriteHeader(code)
 	w.Write(data)
+}
+
+func responseWithError(w http.ResponseWriter, code int, msg string) {
+	if code > 409 {
+		log.Println("Responding with 5XX error:", msg)
+	}
+	responseWithJSON(w, code, errResponse{
+		Error: msg,
+	})
 }
