@@ -3,8 +3,9 @@ package main
 import (
 	"database/sql"
 	"github.com/go-chi/chi/v5"
-	_ "github.com/go-sql-driver/mysql"
+	"github.com/go-chi/cors"
 	"github.com/joho/godotenv"
+	_ "github.com/lib/pq"
 	"github.com/xiaohongred/rss-project/internal/database"
 	"log"
 	"net/http"
@@ -17,39 +18,59 @@ type apiConfig struct {
 
 func main() {
 	godotenv.Load(".env")
-	portString := os.Getenv("PORT")
-	if portString == "" {
-		log.Fatal("PORT is not found in the environment")
+
+	port := os.Getenv("PORT")
+	if port == "" {
+		log.Fatal("PORT environment variable is not set")
 	}
 
-	dbURL := os.Getenv("DB_URL")
+	dbURL := os.Getenv("DATABASE_URL")
 	if dbURL == "" {
-		log.Fatal("DB_URL is not found in the environment")
+		log.Fatal("DATABASE_URL environment variable is not set")
 	}
 
-	conn, err := sql.Open("mysql", dbURL)
-	if err != nil {
-		log.Fatal("sql.Open err", err)
-	}
-	queries := database.New(conn)
-	apiCfg := apiConfig{
-		DB: queries,
-	}
-
-	v1Router := chi.NewRouter()
-	v1Router.HandleFunc("/healthz", handlerReadiness)
-	v1Router.HandleFunc("/err", handlerErr)
-	v1Router.Post("/users", apiCfg.handlerCreateUser)
-	router := chi.NewRouter()
-	router.Mount("/v1", v1Router)
-	router.Get("/", handlerReadiness)
-	srv := &http.Server{
-		Handler: router,
-		Addr:    ":" + portString,
-	}
-	log.Printf("listening on %s", ":"+portString)
-	err = srv.ListenAndServe()
+	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
 		log.Fatal(err)
 	}
+	dbQueries := database.New(db)
+
+	apiCfg := apiConfig{
+		DB: dbQueries,
+	}
+
+	router := chi.NewRouter()
+
+	router.Use(cors.Handler(cors.Options{
+		AllowedOrigins:   []string{"https://*", "http://*"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"*"},
+		ExposedHeaders:   []string{"Link"},
+		AllowCredentials: false,
+		MaxAge:           300,
+	}))
+
+	v1Router := chi.NewRouter()
+
+	v1Router.Post("/users", apiCfg.handlerUsersCreate)
+	v1Router.Get("/users", apiCfg.middlewareAuth(apiCfg.handlerUsersGet))
+
+	v1Router.Post("/feeds", apiCfg.middlewareAuth(apiCfg.handlerFeedCreate))
+	v1Router.Get("/feeds", apiCfg.handlerGetFeeds)
+
+	v1Router.Get("/feed_follows", apiCfg.middlewareAuth(apiCfg.handlerFeedFollowsGet))
+	v1Router.Post("/feed_follows", apiCfg.middlewareAuth(apiCfg.handlerFeedFollowCreate))
+	v1Router.Delete("/feed_follows/{feedFollowID}", apiCfg.middlewareAuth(apiCfg.handlerFeedFollowDelete))
+
+	v1Router.Get("/healthz", handlerReadiness)
+	v1Router.Get("/err", handlerErr)
+
+	router.Mount("/v1", v1Router)
+	srv := &http.Server{
+		Addr:    ":" + port,
+		Handler: router,
+	}
+
+	log.Printf("Serving on port: %s\n", port)
+	log.Fatal(srv.ListenAndServe())
 }

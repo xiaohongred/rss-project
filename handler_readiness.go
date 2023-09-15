@@ -3,9 +3,9 @@ package main
 import "net/http"
 
 func handlerReadiness(w http.ResponseWriter, r *http.Request) {
-	responseWithJSON(w, 200, "hi welcome")
+	respondWithJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 func handlerErr(w http.ResponseWriter, r *http.Request) {
-	responseWithError(w, 400, "err msg")
+	respondWithError(w, http.StatusInternalServerError, "Internal Server Error")
 }

@@ -6,15 +6,31 @@ package database
 
 import (
 	"time"
+
+	"github.com/google/uuid"
 )
 
+type Feed struct {
+	ID        uuid.UUID
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	Name      string
+	Url       string
+	UserID    uuid.UUID
+}
+
+type FeedFollow struct {
+	ID        uuid.UUID
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	UserID    uuid.UUID
+	FeedID    uuid.UUID
+}
+
 type User struct {
-	// 主键
-	ID int32
-	// 创建时间
-	CreateAt time.Time
-	// 修改时间
-	UpdateAt time.Time
-	// 姓名
-	Name string
+	ID        uuid.UUID
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	Name      string
+	ApiKey    string
 }

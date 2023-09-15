@@ -2,14 +2,14 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
+	"github.com/google/uuid"
 	"github.com/xiaohongred/rss-project/internal/database"
+	"log"
 	"net/http"
-	"strconv"
 	"time"
 )
 
-func (apiCfg *apiConfig) handlerCreateUser(w http.ResponseWriter, r *http.Request) {
+func (cfg *apiConfig) handlerUsersCreate(w http.ResponseWriter, r *http.Request) {
 	type parameters struct {
 		Name string
 	}
@@ -17,33 +17,25 @@ func (apiCfg *apiConfig) handlerCreateUser(w http.ResponseWriter, r *http.Reques
 	params := parameters{}
 	err := decoder.Decode(&params)
 	if err != nil {
-		responseWithError(w, 400, fmt.Sprintf("Error parsing JSON: %+v", err))
+		respondWithError(w, http.StatusInternalServerError, "Couldn't decode parameters")
 		return
 	}
-	_, err = apiCfg.DB.CreateUsers(r.Context(), database.CreateUsersParams{
-		Name:     params.Name,
-		CreateAt: time.Now().UTC(),
-		UpdateAt: time.Now().UTC(),
+
+	user, err := cfg.DB.CreateUser(r.Context(), database.CreateUserParams{
+		ID:        uuid.New(),
+		CreatedAt: time.Now().UTC(),
+		UpdatedAt: time.Now().UTC(),
+		Name:      params.Name,
 	})
 	if err != nil {
-		responseWithError(w, 400, fmt.Sprintf("Error  insert user: %+v", err))
+		log.Println(err)
+		respondWithError(w, http.StatusInternalServerError, "Couldn't create user")
 		return
 	}
-	id, _ := apiCfg.DB.LastInsertedUserID(r.Context())
-	user, err := apiCfg.DB.GetUserInfo(r.Context(), int32(id))
-	if err != nil {
-		responseWithError(w, 400, fmt.Sprintf("Error get insert user: %+v", err))
-		return
-	}
-	responseWithJSON(w, 200, struct {
-		ID        string
-		Name      string
-		UpdatedAt string
-		CreatedAt string
-	}{
-		ID:        strconv.Itoa(int(user.ID)),
-		Name:      user.Name,
-		UpdatedAt: user.UpdateAt.String(),
-		CreatedAt: user.CreateAt.String(),
-	})
+
+	respondWithJSON(w, http.StatusOK, databaseUserToUser(user))
+}
+
+func (cfg *apiConfig) handlerUsersGet(w http.ResponseWriter, r *http.Request, user database.User) {
+	respondWithJSON(w, http.StatusOK, databaseUserToUser(user))
 }
