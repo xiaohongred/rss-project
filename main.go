@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/cors"
 	"github.com/joho/godotenv"
@@ -10,6 +11,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 )
 
 type apiConfig struct {
@@ -18,7 +20,11 @@ type apiConfig struct {
 
 func main() {
 	godotenv.Load(".env")
-
+	feed, err2 := urlToFeed("https://www.wagslane.dev/index.xml")
+	if err2 != nil {
+		log.Fatal(err2)
+	}
+	fmt.Println(feed)
 	port := os.Getenv("PORT")
 	if port == "" {
 		log.Fatal("PORT environment variable is not set")
@@ -38,7 +44,7 @@ func main() {
 	apiCfg := apiConfig{
 		DB: dbQueries,
 	}
-
+	go startScraping(dbQueries, 10, time.Minute)
 	router := chi.NewRouter()
 
 	router.Use(cors.Handler(cors.Options{
