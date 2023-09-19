@@ -2,7 +2,6 @@ package main
 
 import (
 	"database/sql"
-	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/cors"
 	"github.com/joho/godotenv"
@@ -20,11 +19,6 @@ type apiConfig struct {
 
 func main() {
 	godotenv.Load(".env")
-	feed, err2 := urlToFeed("https://www.wagslane.dev/index.xml")
-	if err2 != nil {
-		log.Fatal(err2)
-	}
-	fmt.Println(feed)
 	port := os.Getenv("PORT")
 	if port == "" {
 		log.Fatal("PORT environment variable is not set")
